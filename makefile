@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -g
 
-BIN_DIR = bin
+BIN_DIR = build/bin
 SRC_DIR = src
-OBJ_DIR = obj
+OBJ_DIR = build/obj
 
 TARGET = $(BIN_DIR)/web_server
 SOURCES = $(shell find $(SRC_DIR) -type f -name "*.c")
