@@ -1,20 +1,24 @@
 CC = gcc
 CFLAGS = -Wall -g
 
-BIN_DIR = build/bin
 SRC_DIR = src
-OBJ_DIR = build/obj
+BUILD_DIR = build
+BIN_DIR = $(BUILD_DIR)/bin
+OBJ_DIR = $(BUILD_DIR)/obj
+ASSEMBLY_DIR = $(BUILD_DIR)/asm
 
-TARGET = $(BIN_DIR)/web_server
+EXECUTABLE = $(BIN_DIR)/web_server
 SOURCES = $(shell find $(SRC_DIR) -type f -name "*.c")
 OBJECTS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SOURCES))
+ASSEMBLY_FILES = $(patsubst $(SRC_DIR)/%.c, $(ASSEMBLY_DIR)/%.s, $(SOURCES))
 
-$(info OBJECTS: $(OBJECTS))
+all: $(EXECUTABLE) $(ASSEMBLY_FILES)
 
-all: $(TARGET)
-
-$(TARGET): $(OBJECTS)
+$(EXECUTABLE): $(OBJECTS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $^ -o $@
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	mkdir -p $(dir $@)
@@ -23,7 +27,14 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
+$(ASSEMBLY_DIR)/%.s: $(SRC_DIR)/%.c | $(ASSEMBLY_DIR)
+	mkdir -p $(dir $@)
+	$(CC) -S -I$(SRC_DIR) $< -o $@
+
+$(ASSEMBLY_DIR):
+	mkdir -p $(ASSEMBLY_DIR)
+
 clean:
-	rm -rf $(OBJ_DIR)
+	rm -rf $(BIN_DIR) $(OBJ_DIR) $(ASSEMBLY_DIR)
 
 .PHONY: all clean

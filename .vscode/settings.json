@@ -1,8 +1,8 @@
 {
-  "files.associations": {
-    "http_server.h": "c",
-    "endpoints.h": "c",
-    "utils.h": "c",
-    "string.h": "c"
-  }
+    "files.associations": {
+        "handlers.h": "c",
+        "utils.h": "c",
+        "string.h": "c",
+        "stdio.h": "c"
+    }
 }
