@@ -4,5 +4,6 @@
         "utils.h": "c",
         "string.h": "c",
         "stdio.h": "c"
-    }
+    },
+    "editor.tabSize": 4,
 }

@@ -10,6 +10,7 @@
         "${workspaceFolder}/src/main.c",
         "${workspaceFolder}/src/utils/utils.c",
         "${workspaceFolder}/src/web/method_not_supported.c",
+        "${workspaceFolder}/src/template_engine/template_engine.c",
         "${workspaceFolder}/src/web/pages/home.c",
         "${workspaceFolder}/src/web/pages/about.c",
         "${workspaceFolder}/src/web/pages/not_found.c",

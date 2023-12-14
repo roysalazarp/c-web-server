@@ -6,6 +6,7 @@
 #include <linux/limits.h>
 
 #include "utils/utils.h"
+#include "template_engine/template_engine.h"
 
 #define HEADERS_BUFFER_SIZE 4096
 
@@ -116,6 +117,19 @@ void home_get (int client_socket_file_descriptor, char* request_headers) {
         log_error("Failed to read template file");
         exit(EXIT_FAILURE);
     }
+
+    printf("%s\n", template_content);
+
+    char* country[2] = { "v0", "Finland" };
+    render_val(country[0], country[1], template_content);
+
+    char* phone_number[2] = { "v1", "441317957" };
+    render_val(phone_number[0], phone_number[1], template_content);
+    
+    char* phone_prefix[2] = { "v2", "+358" };
+    render_val(phone_prefix[0], phone_prefix[1], template_content);
+    
+    printf("%s\n", template_content);
 
     char headers[100] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
 
