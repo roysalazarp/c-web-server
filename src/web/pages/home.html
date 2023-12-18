@@ -12,5 +12,10 @@
     <div>
         phone number: {{ v2 phone_prefix }} {{ v1 phone_number }}
     </div>
+    <ul>
+        {{ for0 menu_list }}
+        <li>{{ for0->v0 menu_item }}</li>
+        {{ end for0 }}
+    </ul>
   </body>
 </html>

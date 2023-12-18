@@ -4,155 +4,222 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <linux/limits.h>
+#include <stdarg.h>
 
 #include "utils/utils.h"
 #include "template_engine/template_engine.h"
 
 #define HEADERS_BUFFER_SIZE 4096
 
-char* read_template_file(const char* file_path) {
-    FILE* file = fopen(file_path, "r");
+long int calculate_file_bytes_length (char* file_path) {
+    FILE* file = fopen(file_path, "rb");
 
     if (file == NULL) {
-        log_error("Error opening template file");
-        return NULL;
+        log_error("Error opening file");
+        return -1;
     }
 
     if (fseek(file, 0, SEEK_END) == -1) {
-        log_error("Failed to seek to a certain position on STREAM");
+        log_error("Failed to move the file position indicator to the end of the file");
         fclose(file);
-        return NULL;
+        return -1;
     }
 
-    long file_size = ftell(file);
-
+    long int file_size = ftell(file);
     if (file_size == -1) {
-        log_error("Failed to return the current position of STREAM");
+        log_error("Failed to determine the current file position indicator of a file");
         fclose(file);
-        return NULL;
+        return -1;
     }
 
     rewind(file);
+    fclose(file);
+    
+    return file_size;
+}
 
-    char* content = (char*)malloc((size_t)(file_size + 1));
+int read_file (char* file_content, char* file_path, long file_size) {
+    FILE* file = fopen(file_path, "rb");
 
-    if (content == NULL) {
-        log_error("Failed to allocate memory");
-        fclose(file);
-        return NULL;
+    if (file == NULL) {
+        log_error("Error opening file");
+        return -1;
     }
 
-    size_t bytes_read = fread(content, sizeof(char), file_size, file);
+    size_t bytes_read = fread(file_content, sizeof(char), (size_t)file_size, file);
+    if (bytes_read != (size_t)file_size) {
+        if (feof(file)) {
+            log_error("End of file reached before reading all elements");
+        } 
 
-    if (ferror(file) != 0) {
-        log_error("Error reading from file");
+        if (ferror(file)) {
+            perror("An error occurred during the fread operation");
+        }
+
         fclose(file);
-        return NULL;
+        return -1;
     }
 
-    content[bytes_read] = '\0'; // Null-terminate the string
+    file_content[bytes_read] = '\0';
     fclose(file);
 
-    return content;
+    return 0;
 }
 
-char* build_template_path(const char* path) {
-    char resolved_path[PATH_MAX];
+int build_template_path (char* buffer, const char* path) {
+    char cwd[PATH_MAX];
 
-    if (realpath(".", resolved_path) == NULL) {
+    if (realpath(".", cwd) == NULL) {
         log_error("Failed to get the absolute path of the current working directory");
-        return NULL;
+        return -1;
     }
 
+    if (snprintf(buffer, PATH_MAX, "%s/%s", cwd, path) >= PATH_MAX) {
+        log_error("Formatted string truncated");
+        return -1;
+    }
+    
+    return 0;
+}
+
+size_t calculate_combined_length (int num_strings, ...) {
+    if (num_strings <= 0) {
+        log_error("Invalid number of strings");
+        return -1;
+    }
+    
+    size_t sum = 0;
+
+    va_list args;
+    va_start(args, num_strings);
+
+    for (int i = 0; i < num_strings; ++i) {
+        char *current_str = va_arg(args, char*);
+        if (current_str == NULL) {
+            va_end(args);
+            log_error("string is NULL");
+            return -1;
+        }
+        sum += strlen(current_str);
+    }
+
+    va_end(args);
+
+    return sum;
+}
+
+int home_get (int client_socket_file_descriptor, char* request_headers) {
     char* template_path = (char*)malloc(PATH_MAX);
     if (template_path == NULL) {
-        log_error("Memory allocation failed");
-        return NULL;
+        log_error("Failed to allocate memory for template_path");
+        return -1;
     }
 
-    if (snprintf(template_path, PATH_MAX, "%s/%s", resolved_path, path) >= PATH_MAX) {
-        log_error("Formatted string truncated");
-        return NULL;
-    }
-
-    return template_path;
-}
-
-char* build_http_response(char* content, const char* headers) {
-    size_t response_length = strlen(content) + strlen(headers);
-
-    char* http_response = (char *)malloc(response_length);
-    if (http_response == NULL) {
-        log_error("Memory allocation failed");
-        return NULL;
-    }
-
-    // TODO: Check for snprintf errors
-    // Generate the HTTP response
-    snprintf(http_response, response_length, "%s%s", headers, content);
-
-    return http_response;
-}
-
-void home_get (int client_socket_file_descriptor, char* request_headers) {
-    char* host = retrieve_header(request_headers, "Host");
-    free(request_headers);
-
-    if (host != NULL) {
-        printf("%s\n", host);
-    }
-
-    free(host);
-
-    char* template_path = build_template_path("src/web/pages/home.html");
-    if (template_path == NULL) {
-        log_error("Failed to build template path");
+    if (build_template_path(template_path, "src/web/pages/home.html") == -1) {
         free(template_path);
-        exit(EXIT_FAILURE);
+        template_path = NULL;
+        return -1;
     }
 
-    char* template_content = read_template_file(template_path);
-    free(template_path);
-    if (template_content == NULL) {
-        log_error("Failed to read template file");
-        exit(EXIT_FAILURE);
+    long int file_size = calculate_file_bytes_length(template_path);
+    if (file_size == -1) {
+        free(template_path);
+        template_path = NULL;
+        return -1;
     }
+
+    char* template_content = (char*)malloc((size_t)(file_size));
+    if (template_content == NULL) {
+        log_error("Failed to allocate memory for template_content");
+        free(template_path);
+        template_path = NULL;
+        return -1;
+    }
+
+    if (read_file(template_content, template_path, file_size) == -1) {
+        free(template_path);
+        template_path = NULL;
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
+
+    free(template_path);
+    template_path = NULL;
 
     printf("%s\n", template_content);
 
     char* country[2] = { "v0", "Finland" };
-    render_val(country[0], country[1], template_content);
+    if (render_val(country[0], country[1], template_content) == -1) {
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
 
     char* phone_number[2] = { "v1", "441317957" };
-    render_val(phone_number[0], phone_number[1], template_content);
+    if (render_val(phone_number[0], phone_number[1], template_content) == -1) {
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
     
     char* phone_prefix[2] = { "v2", "+358" };
-    render_val(phone_prefix[0], phone_prefix[1], template_content);
-    
+    if (render_val(phone_prefix[0], phone_prefix[1], template_content) == -1) {
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
+
+    // char* menu_list[6] = { "for0", "for0->v0", "home", "about", "contact", "careers" };
+    // if (render_for(menu_list, template_content, 6) == NULL) {
+    //     free(template_content);
+    //     return -1;
+    // }
+
     printf("%s\n", template_content);
 
     char headers[100] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-
-    char* http_response = build_http_response(template_content, headers);
-    free(template_content);
+    
+    size_t response_length = calculate_combined_length(2, template_content, headers);
+    if (response_length == -1) {
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
+    
+    char* http_response = (char *)malloc(response_length);
     if (http_response == NULL) {
-        log_error("Failed to build http response");
-        exit(EXIT_FAILURE);
+        log_error("Failed to allocate memory for http_response");
+        free(template_content);
+        template_content = NULL;
+        return -1;
     }
 
-    // TODO: Check for strlen erros
-    size_t http_response_length = strlen(http_response);
+    if (snprintf(http_response, response_length, "%s%s", headers, template_content) != response_length) {
+        log_error("Did't store the result in a specified buffer correctly");
+        free(template_content);
+        template_content = NULL;
+        free(http_response);
+        http_response = NULL;
+        return -1;
+    }
+
+    free(template_content);
+    template_content = NULL;
 
     // Send the HTTP response
-    if (send(client_socket_file_descriptor, http_response, http_response_length, 0) == -1) {
-        log_error("Failed send buffer");
+    if (send(client_socket_file_descriptor, http_response, response_length, 0) == -1) {
+        log_error("Failed send HTTP response");
         free(http_response);
-        exit(EXIT_FAILURE);
+        http_response = NULL;
+        return -1;
     }
 
     free(http_response);
+    http_response = NULL;
 
     close(client_socket_file_descriptor);
+    return 0;
 }
 
 void home_post (int client_socket_file_descriptor, char* request_headers) {}
