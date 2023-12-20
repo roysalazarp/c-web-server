@@ -82,6 +82,19 @@ int extract_request_headers (char* request_headers, int server_socket_file_descr
     return 0;
 }
 
+int filetype_request (const char* path, const char* extension) {
+    size_t extension_length = strlen(extension);
+    size_t path_length = strlen(path);
+
+    if (strncmp(path + path_length - extension_length, extension, extension_length) == 0) {
+        return 0;
+    } else {
+        return -1;
+    }
+
+    return 0;
+}
+
 int main () {
     // used to gracefully exit program to check memory leaks with valgrind
     signal(SIGINT, sigint_handler);
@@ -118,16 +131,57 @@ int main () {
             exit(EXIT_FAILURE);
         }
 
-        char method[10];
-        char url[256];
+        // char method[10];
+        // char url[256];
     
-        if (sscanf(request_headers, "%9s %255s\n", method, url) != 2) {
-            log_error("Failed to fill variables\n");
+        // if (sscanf(request_headers, "%9s %255s\n", method, url) != 2) {
+        //     log_error("Failed to fill variables\n");
+        //     close(server_socket_file_descriptor);
+        //     close(client_socket_file_descriptor);
+        //     free(request_headers);
+        //     request_headers = NULL;
+        //     exit(EXIT_FAILURE);
+        // }
+
+        // Find the positions of spaces in the string
+        const char *space1 = strchr(request_headers, ' ');
+        const char *space2 = strchr(space1 + 1, ' ');
+
+        // Calculate the lengths of each part
+        size_t method_length = space1 - request_headers;
+        size_t url_length = space2 - (space1 + 1);
+        size_t protocol_length = strlen(space2 + 1);
+
+        // Dynamically allocate memory for each part
+        char *method = malloc(method_length + 1);
+        char *url = malloc(url_length + 1);
+        char *protocol = malloc(protocol_length + 1);
+
+        // Check if memory allocation was successful
+        if (method == NULL || url == NULL || protocol == NULL) {
+            log_error("Failed to allocate memory for method, url or protocol\n");
             close(server_socket_file_descriptor);
             close(client_socket_file_descriptor);
             free(request_headers);
             request_headers = NULL;
             exit(EXIT_FAILURE);
+        }
+        
+        url[url_length] = '\0';
+        method[method_length] = '\0';
+        protocol[protocol_length] = '\0';
+
+        strncpy(method, request_headers, method_length);
+        strncpy(url, space1 + 1, url_length);
+        strncpy(protocol, space2 + 1, protocol_length);
+
+        if (filetype_request(url, ".css") == 0) {
+            if (serve_static(client_socket_file_descriptor, url) == -1) {
+                close(server_socket_file_descriptor);
+                close(client_socket_file_descriptor);
+                free(request_headers);
+                exit(EXIT_FAILURE);
+            }
         }
 
         if (strcmp(url, "/") == 0) {

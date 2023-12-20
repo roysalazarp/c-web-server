@@ -232,10 +232,6 @@ int render_for (char* list[], char* template, int list_length) {
         }
     }
 
-    for (int i = 0; i < for_length; ++i) {
-        printf("%s\n", for_items[i]);
-    }
-
     size_t total_length = 0;
     for (int i = 0; i < for_length; ++i) {
         total_length += strlen(for_items[i]);
@@ -257,8 +253,6 @@ int render_for (char* list[], char* template, int list_length) {
         // strcat will do its work before the null-terminator
         strcat(rendered_for, for_items[i]);
     }
-
-    printf("%s\n", rendered_for);
 
     free_multiple_copies(for_items, for_length);
 

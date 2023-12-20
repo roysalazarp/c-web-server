@@ -1,17 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <linux/limits.h>
-#include <stdarg.h>
 
 #include "utils/utils.h"
-#include "template_engine/template_engine.h"
 
-#define HEADERS_BUFFER_SIZE 4096
-
-int home_get (int client_socket_file_descriptor, char* request_headers) {
+int serve_static (int client_socket_file_descriptor, char* path) {
     char* template_path = (char*)malloc(PATH_MAX * sizeof(char));
     if (template_path == NULL) {
         log_error("Failed to allocate memory for template_path\n");
@@ -20,7 +15,7 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
 
     template_path[0] = '\0';
 
-    if (build_template_path(template_path, "src/web/pages/home.html") == -1) {
+    if (build_template_path(template_path, path) == -1) {
         free(template_path);
         template_path = NULL;
         return -1;
@@ -54,35 +49,7 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
     free(template_path);
     template_path = NULL;
 
-    char* country[3] = { "v0", "Finland", NULL };
-    if (render_val(country[0], country[1], template_content) == -1) {
-        free(template_content);
-        template_content = NULL;
-        return -1;
-    }
-
-    char* phone_number[3] = { "v1", "441317957", NULL };
-    if (render_val(phone_number[0], phone_number[1], template_content) == -1) {
-        free(template_content);
-        template_content = NULL;
-        return -1;
-    }
-    
-    char* phone_prefix[3] = { "v2", "+358", NULL };
-    if (render_val(phone_prefix[0], phone_prefix[1], template_content) == -1) {
-        free(template_content);
-        template_content = NULL;
-        return -1;
-    }
-
-    char* menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
-    if (render_for(menu_list, template_content, 7) == -1) {
-        free(template_content);
-        template_content = NULL;
-        return -1;
-    }
-
-    char headers[100] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+    char headers[100] = "HTTP/1.1 200 OK\r\nContent-Type: text/css\r\n\r\n";
     
     size_t response_length = calculate_combined_length(2, template_content, headers);
     if (response_length == -1) {
@@ -127,7 +94,3 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
     close(client_socket_file_descriptor);
     return 0;
 }
-
-void home_post (int client_socket_file_descriptor, char* request_headers) {}
-void home_put (int client_socket_file_descriptor, char* request_headers) {}
-void home_patch (int client_socket_file_descriptor, char* request_headers) {}

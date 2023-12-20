@@ -1,6 +1,8 @@
 #ifndef HANDLERS_H
 #define HANDLERS_H
 
+int serve_static (int client_socket_file_descriptor, char* path);
+
 int home_get (int client_socket_file_descriptor, char* request_headers);
 // void home_post (int client_socket_file_descriptor, char* request_headers);
 // void home_put (int client_socket_file_descriptor, char* request_headers);
