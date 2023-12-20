@@ -12,22 +12,22 @@
 #define HEADERS_BUFFER_SIZE 4096
 
 long int calculate_file_bytes_length (char* file_path) {
-    FILE* file = fopen(file_path, "rb");
+    FILE* file = fopen(file_path, "r");
 
     if (file == NULL) {
-        log_error("Error opening file");
+        log_error("Error opening file\n");
         return -1;
     }
 
     if (fseek(file, 0, SEEK_END) == -1) {
-        log_error("Failed to move the file position indicator to the end of the file");
+        log_error("Failed to move the file position indicator to the end of the file\n");
         fclose(file);
         return -1;
     }
 
     long int file_size = ftell(file);
     if (file_size == -1) {
-        log_error("Failed to determine the current file position indicator of a file");
+        log_error("Failed to determine the current file position indicator of a file\n");
         fclose(file);
         return -1;
     }
@@ -39,17 +39,17 @@ long int calculate_file_bytes_length (char* file_path) {
 }
 
 int read_file (char* file_content, char* file_path, long file_size) {
-    FILE* file = fopen(file_path, "rb");
+    FILE* file = fopen(file_path, "r");
 
     if (file == NULL) {
-        log_error("Error opening file");
+        log_error("Error opening file\n");
         return -1;
     }
 
     size_t bytes_read = fread(file_content, sizeof(char), (size_t)file_size, file);
     if (bytes_read != (size_t)file_size) {
         if (feof(file)) {
-            log_error("End of file reached before reading all elements");
+            log_error("End of file reached before reading all elements\n");
         } 
 
         if (ferror(file)) {
@@ -61,7 +61,6 @@ int read_file (char* file_content, char* file_path, long file_size) {
     }
 
     file_content[bytes_read] = '\0';
-    fclose(file);
 
     return 0;
 }
@@ -70,12 +69,12 @@ int build_template_path (char* buffer, const char* path) {
     char cwd[PATH_MAX];
 
     if (realpath(".", cwd) == NULL) {
-        log_error("Failed to get the absolute path of the current working directory");
+        log_error("Failed to get the absolute path of the current working directory\n");
         return -1;
     }
 
     if (snprintf(buffer, PATH_MAX, "%s/%s", cwd, path) >= PATH_MAX) {
-        log_error("Formatted string truncated");
+        log_error("Formatted string truncated\n");
         return -1;
     }
     
@@ -84,7 +83,7 @@ int build_template_path (char* buffer, const char* path) {
 
 size_t calculate_combined_length (int num_strings, ...) {
     if (num_strings <= 0) {
-        log_error("Invalid number of strings");
+        log_error("Invalid number of strings\n");
         return -1;
     }
     
@@ -97,7 +96,7 @@ size_t calculate_combined_length (int num_strings, ...) {
         char *current_str = va_arg(args, char*);
         if (current_str == NULL) {
             va_end(args);
-            log_error("string is NULL");
+            log_error("string is NULL\n");
             return -1;
         }
         sum += strlen(current_str);
@@ -109,11 +108,13 @@ size_t calculate_combined_length (int num_strings, ...) {
 }
 
 int home_get (int client_socket_file_descriptor, char* request_headers) {
-    char* template_path = (char*)malloc(PATH_MAX);
+    char* template_path = (char*)malloc(PATH_MAX * sizeof(char));
     if (template_path == NULL) {
-        log_error("Failed to allocate memory for template_path");
+        log_error("Failed to allocate memory for template_path\n");
         return -1;
     }
+
+    template_path[0] = '\0';
 
     if (build_template_path(template_path, "src/web/pages/home.html") == -1) {
         free(template_path);
@@ -128,13 +129,15 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
         return -1;
     }
 
-    char* template_content = (char*)malloc((size_t)(file_size));
+    char* template_content = (char*)malloc(((size_t)(file_size) + 1) * sizeof(char));
     if (template_content == NULL) {
-        log_error("Failed to allocate memory for template_content");
+        log_error("Failed to allocate memory for template_content\n");
         free(template_path);
         template_path = NULL;
         return -1;
     }
+
+    template_content[0] = '\0';
 
     if (read_file(template_content, template_path, file_size) == -1) {
         free(template_path);
@@ -149,32 +152,33 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
 
     printf("%s\n", template_content);
 
-    char* country[2] = { "v0", "Finland" };
+    char* country[3] = { "v0", "Finland", NULL };
     if (render_val(country[0], country[1], template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
-    char* phone_number[2] = { "v1", "441317957" };
+    char* phone_number[3] = { "v1", "441317957", NULL };
     if (render_val(phone_number[0], phone_number[1], template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
     
-    char* phone_prefix[2] = { "v2", "+358" };
+    char* phone_prefix[3] = { "v2", "+358", NULL };
     if (render_val(phone_prefix[0], phone_prefix[1], template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
-    // char* menu_list[6] = { "for0", "for0->v0", "home", "about", "contact", "careers" };
-    // if (render_for(menu_list, template_content, 6) == NULL) {
-    //     free(template_content);
-    //     return -1;
-    // }
+    char* menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
+    if (render_for(menu_list, template_content, 7) == -1) {
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
 
     printf("%s\n", template_content);
 
@@ -187,16 +191,18 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
         return -1;
     }
     
-    char* http_response = (char *)malloc(response_length);
+    char* http_response = (char*)malloc((response_length + 1) * sizeof(char));
     if (http_response == NULL) {
-        log_error("Failed to allocate memory for http_response");
+        log_error("Failed to allocate memory for http_response\n");
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
+    http_response[0] = '\0';
+
     if (snprintf(http_response, response_length, "%s%s", headers, template_content) != response_length) {
-        log_error("Did't store the result in a specified buffer correctly");
+        log_error("Did't store the result in a specified buffer correctly\n");
         free(template_content);
         template_content = NULL;
         free(http_response);
@@ -209,7 +215,7 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
 
     // Send the HTTP response
     if (send(client_socket_file_descriptor, http_response, response_length, 0) == -1) {
-        log_error("Failed send HTTP response");
+        log_error("Failed send HTTP response\n");
         free(http_response);
         http_response = NULL;
         return -1;

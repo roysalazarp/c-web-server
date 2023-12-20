@@ -23,14 +23,15 @@ char* retrieve_header (const char* request_headers, const char* key) {
 
     size_t value_length = value_end - key_start;
     
-    char* value = (char*)malloc(value_length + 1);
+    char* value = (char*)malloc((value_length + 1) * sizeof(char));
     if (value == NULL) {
         log_error("Failed to allocate memory\n");
         return NULL;
     }
 
+    value[0] = '\0';
+
     strncpy(value, key_start, value_length);
-    value[value_length] = '\0'; // Null-terminate the string
 
     return value;
 };

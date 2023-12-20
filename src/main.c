@@ -26,12 +26,12 @@ int create_and_configure_server_socket (uint16_t port) {
     int server_socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
 
     if (server_socket_file_descriptor == -1) {
-        log_error("Failed to create server socket");
+        log_error("Failed to create server socket\n");
         return -1;
     }
 
     if (setsockopt(server_socket_file_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) == -1) {
-        log_error("Failed to set local address for immediately reuse upon socker closed");
+        log_error("Failed to set local address for immediately reuse upon socker closed\n");
         close(server_socket_file_descriptor);
         return -1;
     }
@@ -44,13 +44,13 @@ int create_and_configure_server_socket (uint16_t port) {
     };
 
     if (bind(server_socket_file_descriptor, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        log_error("Failed to bind socket to address and port");
+        log_error("Failed to bind socket to address and port\n");
         close(server_socket_file_descriptor);
         return -1;
     }
 
     if (listen(server_socket_file_descriptor, MAX_CONNECTIONS) == -1) {
-        log_error("Failed to set up socket to listen for incoming connections");
+        log_error("Failed to set up socket to listen for incoming connections\n");
         close(server_socket_file_descriptor);
         return -1;
     }
@@ -66,7 +66,7 @@ int accept_client_connection (int server_socket_file_descriptor) {
 
     int client_socket_file_descriptor = accept(server_socket_file_descriptor, (struct sockaddr *)&client_addr, &client_addr_len);
     if (client_socket_file_descriptor == -1) {
-        log_error("Failed to create client socket");
+        log_error("Failed to create client socket\n");
         return -1;
     }
 
@@ -75,7 +75,7 @@ int accept_client_connection (int server_socket_file_descriptor) {
 
 int extract_request_headers (char* request_headers, int server_socket_file_descriptor, int client_socket_file_descriptor) {
     if (recv(client_socket_file_descriptor, request_headers, REQUEST_HEADERS_BUFFER_SIZE, 0) == -1) {
-        log_error("Failed read N bytes into BUF from socket FD");
+        log_error("Failed read N bytes into BUF from socket FD\n");
         return -1;
     }
 
@@ -100,13 +100,15 @@ int main () {
             exit(EXIT_FAILURE);
         }
 
-        char* request_headers = (char*)malloc(REQUEST_HEADERS_BUFFER_SIZE);
+        char* request_headers = (char*)malloc(REQUEST_HEADERS_BUFFER_SIZE * sizeof(char));
         if (request_headers == NULL) {
-            log_error("Failed to allocate memory for request_headers");
+            log_error("Failed to allocate memory for request_headers\n");
             close(server_socket_file_descriptor);
             close(client_socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
+        
+        request_headers[0] = '\0';
 
         if (extract_request_headers(request_headers, server_socket_file_descriptor, client_socket_file_descriptor) == -1) {
             close(server_socket_file_descriptor);
@@ -120,7 +122,7 @@ int main () {
         char url[256];
     
         if (sscanf(request_headers, "%9s %255s\n", method, url) != 2) {
-            log_error("Failed to fill variables");
+            log_error("Failed to fill variables\n");
             close(server_socket_file_descriptor);
             close(client_socket_file_descriptor);
             free(request_headers);

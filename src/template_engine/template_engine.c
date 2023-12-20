@@ -72,112 +72,44 @@ int replace_string (char* haystack, const char* begin_address, const char* end_a
     return 0;
 }
 
-// reviewed ✅
-char* make_end_keyword (char* kw) {
-    const char* prefix = "end ";
+
+// Frees dest memory on failure
+int make_multiple_copies (char** dest, size_t num_copies, const char* source) {
     
-    size_t end_keyword_length = strlen(prefix) + strlen(kw) + 1;
-    char* end_keyword = (char*)malloc(end_keyword_length);
-
-    if (end_keyword == NULL) {
-        log_error("Memory allocation failed\n");
-        return NULL;
-    }
-
-    sprintf(end_keyword, "%s%s", prefix, kw);
-
-    return end_keyword;
-}
-
-// reviewed ✅
-char* copy_substring (const char* source, const char* start, const char* end) {
-    size_t length = end - start;
-
-    char* result = (char*)malloc(length + 1);
-
-    if (result == NULL) {
-        log_error("Memory allocation failed\n");
-        return NULL;
-    }
-
-    strncpy(result, start, length);
-    result[length] = '\0'; // <-- combining multiple string that end in \0 may cause a problem
-
-    return result;
-}
-
-// reviewed ✅
-char** make_multiple_copies (const char* source, size_t num_copies) {
-    // Allocate memory for an array of strings
-    char** copies = (char**)malloc(num_copies * sizeof(char*));
-
-    // Check if memory allocation is successful
-    if (copies == NULL) {
-        log_error("Memory allocation failed\n");
-        return NULL;
-    }
-
-    // Allocate memory and copy the source string for each copy
     for (size_t i = 0; i < num_copies; ++i) {
-        size_t length = strlen(source) + 1;  // Include space for the null terminator
-        copies[i] = (char*)malloc(length);
+        size_t source_lenght = strlen(source);
+        dest[i] = (char*)malloc((source_lenght + 1) * sizeof(char));
 
-        // Check if memory allocation for the copy is successful
-        if (copies[i] == NULL) {
-            fprintf(stderr, "Memory allocation failed for copy %zu\n", i);
+        if (dest[i] == NULL) {
+            fprintf(stderr, "Failed to allocate memory for copy %zu\n", i);
 
             // Clean up previously allocated memory
             for (size_t j = 0; j < i; ++j) {
-                free(copies[j]);
+                free(dest[j]);
+                dest[j] = NULL;
             }
 
-            free(copies);
-            return NULL;
+            free(dest);
+            dest = NULL;
+            return -1;
         }
 
-        // Copy the source string to the new memory
-        strcpy(copies[i], source);
+        dest[i][0] = '\0';
+        strcpy(dest[i], source);
     }
 
-    return copies;
+    return 0;
 }
 
-// reviewed ✅
-void free_multiple_copies(char** copies, size_t num_copies) {
+void free_multiple_copies (char** copies, size_t num_copies) {
     for (size_t i = 0; i < num_copies; ++i) {
         free(copies[i]);
+        copies[i] = NULL;
     }
+
     free(copies);
+    copies = NULL;
 }
-
-// reviewed ✅
-char* concatenate_strings (char** string_array, size_t length) {
-    if (string_array == NULL) return NULL;
-
-    // Calculate the total length of the concatenated string
-    size_t total_length = 0;
-    for (int i = 0; i < length; ++i) {
-        total_length += strlen(string_array[i]);
-    }
-
-    // Allocate memory for the concatenated string (including space for null terminators)
-    char* result = (char*)malloc(total_length + 1);
-
-    // Check if memory allocation is successful
-    if (result == NULL) {
-        fprintf(stderr, "Memory allocation failed\n");
-        return NULL;
-    }
-
-    // Concatenate the strings into the result buffer
-    result[0] = '\0';  // Start with an empty string
-    for (int i = 0; i < length; ++i) {
-        strcat(result, string_array[i]);
-    }
-
-    return result;
-}
-
 
 int render_val (char* val_keyword, char* value, char* template) {
     char* keyword_address = find_needle_address(template, val_keyword, 0, 1);
@@ -204,64 +136,138 @@ int render_val (char* val_keyword, char* value, char* template) {
     return 0;
 }
 
-// reviewed ✅
-char* render_for (char* list[], char* template, int list_length) {
+int render_for (char* list[], char* template, int list_length) {
     char* location_keyword = list[0];
     char* val_keyword = list[1];
     
-    // find the start of the for loop
     char* keyword_address = find_needle_address(template, location_keyword, 0, 1);
-
     int keyword_position_within_template = keyword_address - template;
 
     char* start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
     char* end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
 
-    // find the start of the for loop
-    char* end_keyword = make_end_keyword(location_keyword);
+    const char* prefix = "end ";
+    size_t end_keyword_length = strlen(prefix) + strlen(location_keyword);
+    char* end_keyword = (char*)malloc((end_keyword_length + 1) * sizeof(char));
     if (end_keyword == NULL) {
-        return NULL;
+        log_error("Failed to allocate memory for end_keyword\n");
+        return -1;
     }
 
-    char* end_keyword_address = find_needle_address(template, end_keyword, 0, 1);
+    end_keyword[0] = '\0';
+
+    if (sprintf(end_keyword, "%s%s", prefix, location_keyword) < 0) {
+        log_error("Failed to format string\n");
+        free(end_keyword);
+        end_keyword = NULL;
+        return -1;
+    }
+
+    char* end_keyword_address = find_needle_address(template, end_keyword, keyword_position_within_template, 1);
     free(end_keyword);
+    end_keyword = NULL;
 
     int end_keyword_position_within_template = end_keyword_address - template;
 
     char* e_start_braces_address = find_needle_address(template, "{{", end_keyword_position_within_template, -1);
     char* e_end_braces_address = find_needle_address(template, "}}", end_keyword_position_within_template, 1);
 
-    char* for_section = copy_substring(template, end_braces_address + 2, e_start_braces_address);
-    if (end_keyword == NULL) {
-        return NULL;
+    size_t length = e_start_braces_address - (end_braces_address + 2);
+
+    char* for_template = (char*)malloc((length + 1) * sizeof(char));
+    if (for_template == NULL) {
+        log_error("Failed to allocate memory for for_template\n");
+        return -1;
     }
 
-    size_t values_amount = 0;
-    size_t start = 2;
+    for_template[0] = '\0';
 
-    while (start < list_length) {
-        values_amount++;
-        start++;
+    if (strncpy(for_template, end_braces_address + 2, length) == NULL) {
+        log_error("Failed copy string\n");
+        free(for_template);
+        for_template = NULL;
+        return -1;
     }
 
-    char** for_list = make_multiple_copies(for_section, values_amount);
-    free(for_section);
-    if (for_list == NULL) {
-        return NULL;
+    size_t for_length = 0;
+    
+    for (int i = 2; list[i] != NULL; i++) {
+        for_length++;
     }
 
-    for (int i = 0; i < values_amount; ++i) {
-        render_val(val_keyword, list[i], for_list[i]);
+    char** for_items = (char**)malloc(for_length * sizeof(char*));
+    if (for_items == NULL) {
+        log_error("Failed to allocate memory for for_items\n");
+        free(for_template);
+        for_template = NULL;
+        return -1;
     }
 
-    char* rendered_for = concatenate_strings(for_list, values_amount);
-    free_multiple_copies(for_list, values_amount);
+    for (size_t i = 0; i < for_length; i++) {
+        for_items[i] = NULL;
+    }
+    
+    if (make_multiple_copies(for_items, for_length, for_template) == -1) {
+        log_error("Failed to make for_items\n");
+        free(for_template);
+        for_template = NULL;
+        return -1;
+    }
+
+    free(for_template);
+    for_template = NULL;
+
+    for (int i = 0; i < for_length; ++i) {
+        int ri = i + 2;
+
+        if (render_val(val_keyword, list[ri], for_items[i]) == -1) {
+            // Clean up previously allocated memory
+            for (size_t j = 0; j < i; ++j) {
+                free(for_items[j]);
+                for_items[j] = NULL;
+            }
+            free(for_items);
+            for_items = NULL;
+            return -1;
+        }
+    }
+
+    for (int i = 0; i < for_length; ++i) {
+        printf("%s\n", for_items[i]);
+    }
+
+    size_t total_length = 0;
+    for (int i = 0; i < for_length; ++i) {
+        total_length += strlen(for_items[i]);
+    }
+
+    // ERROR: Weird memory allocation here!
+    char* rendered_for = (char*)malloc((total_length + 1) * sizeof(char));
     if (rendered_for == NULL) {
-        return NULL;
+        log_error("Failed to allocate memory for rendered_for\n");
+        return -1;
     }
 
-    replace_string(template, start_braces_address, e_end_braces_address + 2, rendered_for);
-    free(rendered_for);
+    // Adding a null-terminator at position 0 sets the value of rendered_for to an empty string, 
+    // thus removing cleaning up previous values in the memory space given by malloc.
+    rendered_for[0] = '\0'; 
 
-    return template;
+    for (int i = 0; i < for_length; ++i) {
+        // TODO: Check for strcat errors
+        // strcat will do its work before the null-terminator
+        strcat(rendered_for, for_items[i]);
+    }
+
+    printf("%s\n", rendered_for);
+
+    free_multiple_copies(for_items, for_length);
+
+    if (replace_string(template, start_braces_address, e_end_braces_address + 2, rendered_for) == -1) {
+        free(rendered_for);
+        rendered_for = NULL;
+        return -1;
+    }
+
+    free(rendered_for);
+    return 0;
 }
