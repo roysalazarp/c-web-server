@@ -9,18 +9,17 @@
 #include "utils/utils.h"
 #include "template_engine/template_engine.h"
 
-#define HEADERS_BUFFER_SIZE 4096
-
-int home_get (int client_socket_file_descriptor, char* request_headers) {
-    char* template_path = (char*)malloc(PATH_MAX * sizeof(char));
+int home_get (int client_socket_file_descriptor, char *request_headers) {
+    char *template_path;
+    template_path = (char*)malloc(PATH_MAX * (sizeof *template_path) + 1);
     if (template_path == NULL) {
         log_error("Failed to allocate memory for template_path\n");
         return -1;
     }
-
+    
     template_path[0] = '\0';
 
-    if (build_template_path(template_path, "src/web/pages/home.html") == -1) {
+    if (build_template_path(template_path, "/src/web/pages/home.html") == -1) {
         free(template_path);
         template_path = NULL;
         return -1;
@@ -33,7 +32,9 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
         return -1;
     }
 
-    char* template_content = (char*)malloc(((size_t)(file_size) + 1) * sizeof(char));
+    char *template_content;
+    template_content = (char*)malloc(((size_t)(file_size)) * (sizeof *template_content) + 1);
+
     if (template_content == NULL) {
         log_error("Failed to allocate memory for template_content\n");
         free(template_path);
@@ -51,38 +52,40 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
         return -1;
     }
 
+    template_content[file_size] = '\0';
+
     free(template_path);
     template_path = NULL;
 
-    char* country[3] = { "v0", "Finland", NULL };
+    char *country[3] = { "v0", "Finland", NULL };
     if (render_val(country[0], country[1], template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
-    char* phone_number[3] = { "v1", "441317957", NULL };
+    char *phone_number[3] = { "v1", "441317957", NULL };
     if (render_val(phone_number[0], phone_number[1], template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
     
-    char* phone_prefix[3] = { "v2", "+358", NULL };
+    char *phone_prefix[3] = { "v2", "+358", NULL };
     if (render_val(phone_prefix[0], phone_prefix[1], template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
-    char* menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
-    if (render_for(menu_list, template_content, 7) == -1) {
-        free(template_content);
-        template_content = NULL;
-        return -1;
-    }
+    // char *menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
+    // if (render_for(menu_list, template_content, 7) == -1) {
+    //     free(template_content);
+    //     template_content = NULL;
+    //     return -1;
+    // }
 
-    char headers[100] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+    char headers[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
     
     size_t response_length = calculate_combined_length(2, template_content, headers);
     if (response_length == -1) {
@@ -91,7 +94,8 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
         return -1;
     }
     
-    char* http_response = (char*)malloc((response_length + 1) * sizeof(char));
+    char *http_response;
+    http_response = (char*)malloc(response_length * (sizeof *http_response) + 1);
     if (http_response == NULL) {
         log_error("Failed to allocate memory for http_response\n");
         free(template_content);
@@ -101,7 +105,8 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
 
     http_response[0] = '\0';
 
-    if (snprintf(http_response, response_length, "%s%s", headers, template_content) != response_length) {
+
+    if (sprintf(http_response, "%s%s", headers, template_content) < 0) {
         log_error("Did't store the result in a specified buffer correctly\n");
         free(template_content);
         template_content = NULL;
@@ -109,6 +114,8 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
         http_response = NULL;
         return -1;
     }
+
+    http_response[response_length] = '\0';
 
     free(template_content);
     template_content = NULL;
@@ -128,6 +135,6 @@ int home_get (int client_socket_file_descriptor, char* request_headers) {
     return 0;
 }
 
-void home_post (int client_socket_file_descriptor, char* request_headers) {}
-void home_put (int client_socket_file_descriptor, char* request_headers) {}
-void home_patch (int client_socket_file_descriptor, char* request_headers) {}
+void home_post (int client_socket_file_descriptor, char *request_headers) {}
+void home_put (int client_socket_file_descriptor, char *request_headers) {}
+void home_patch (int client_socket_file_descriptor, char *request_headers) {}

@@ -5,7 +5,8 @@
         "string.h": "c",
         "stdio.h": "c",
         "type_traits": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "template_engine.h": "c"
     },
     "editor.tabSize": 4,
 }

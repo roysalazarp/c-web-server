@@ -6,8 +6,9 @@
 
 #include "utils/utils.h"
 
-int serve_static (int client_socket_file_descriptor, char* path) {
-    char* template_path = (char*)malloc(PATH_MAX * sizeof(char));
+int serve_static (int client_socket_file_descriptor, char *path, const char *headers) {
+    char *template_path;
+    template_path = (char*)malloc(PATH_MAX * (sizeof *template_path) + 1);
     if (template_path == NULL) {
         log_error("Failed to allocate memory for template_path\n");
         return -1;
@@ -28,57 +29,59 @@ int serve_static (int client_socket_file_descriptor, char* path) {
         return -1;
     }
 
-    char* template_content = (char*)malloc(((size_t)(file_size) + 1) * sizeof(char));
-    if (template_content == NULL) {
-        log_error("Failed to allocate memory for template_content\n");
+    char *static_content;
+    static_content = (char*)malloc(((size_t)(file_size)) * (sizeof *static_content) + 1);
+    if (static_content == NULL) {
+        log_error("Failed to allocate memory for static_content\n");
         free(template_path);
         template_path = NULL;
         return -1;
     }
 
-    template_content[0] = '\0';
+    static_content[0] = '\0';
 
-    if (read_file(template_content, template_path, file_size) == -1) {
+    if (read_file(static_content, template_path, file_size) == -1) {
         free(template_path);
         template_path = NULL;
-        free(template_content);
-        template_content = NULL;
+        free(static_content);
+        static_content = NULL;
         return -1;
     }
+
+    static_content[file_size] = '\0';
 
     free(template_path);
     template_path = NULL;
-
-    char headers[100] = "HTTP/1.1 200 OK\r\nContent-Type: text/css\r\n\r\n";
     
-    size_t response_length = calculate_combined_length(2, template_content, headers);
+    size_t response_length = calculate_combined_length(2, static_content, headers);
     if (response_length == -1) {
-        free(template_content);
-        template_content = NULL;
+        free(static_content);
+        static_content = NULL;
         return -1;
     }
     
-    char* http_response = (char*)malloc((response_length + 1) * sizeof(char));
+    char *http_response;
+    http_response = (char*)malloc(response_length * (sizeof *http_response) + 1);
     if (http_response == NULL) {
         log_error("Failed to allocate memory for http_response\n");
-        free(template_content);
-        template_content = NULL;
+        free(static_content);
+        static_content = NULL;
         return -1;
     }
 
     http_response[0] = '\0';
 
-    if (snprintf(http_response, response_length, "%s%s", headers, template_content) != response_length) {
+    if (sprintf(http_response, "%s%s", headers, static_content) < 0) {
         log_error("Did't store the result in a specified buffer correctly\n");
-        free(template_content);
-        template_content = NULL;
+        free(static_content);
+        static_content = NULL;
         free(http_response);
         http_response = NULL;
         return -1;
     }
 
-    free(template_content);
-    template_content = NULL;
+    free(static_content);
+    static_content = NULL;
 
     // Send the HTTP response
     if (send(client_socket_file_descriptor, http_response, response_length, 0) == -1) {

@@ -1,3 +1,42 @@
 body {
-    background-color: red;
+    background-color: #001002;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.rain {
+    height: 100vh;
+    background-color: #001002;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.rain__background {
+    display: flex;
+    /* background-color: #42ff62; */
+    background-color: #42ff6221;
+}
+
+.rain__vertical-gap {
+    height: 100vh;
+    width: 1.5vw;
+    margin-right: 1.5vw;
+    background-color: #001002;
+}
+
+.rain__horizontal-gap {
+    height: 1.5vw;
+    width: 1.5vw;
+    background-color: #001002;
+    position: absolute;
+    animation: slide 10s linear infinite;
+}
+
+@keyframes slide {
+    0% {
+        transform: translateY(-100vh);
+    }
+    100% {
+        transform: translateY(100vh);
+    }
 }

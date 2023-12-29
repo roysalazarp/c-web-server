@@ -4,19 +4,74 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="src/web/pages/home.css">
+    <link rel="stylesheet" href="src/web/pages/global.css">
     <title>Document</title>
   </head>
   <body>
-    <div>
-        country: {{ v0 country }}
+    <div class="rain">
+        <div class="rain__background">
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+          <div class="rain__vertical-gap"></div>
+          <div class="rain__horizontal-gap"></div>
+        </div>
     </div>
     <div>
-        phone number: {{ v2 phone_prefix }} {{ v1 phone_number }}
+        <div>
+            country: {{ v0 country }}
+        </div>
+        <div>
+            phone number: {{ v2 phone_prefix }} {{ v1 phone_number }}
+        </div>
+        <ul>
+            {{ for0 menu_list }}
+            <li>{{ for0->v0 menu_item }}</li>
+            {{ end for0 }}
+        </ul>
     </div>
-    <ul>
-        {{ for0 menu_list }}
-        <li>{{ for0->v0 menu_item }}</li>
-        {{ end for0 }}
-    </ul>
+    <script>
+        function randomNumber(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const horizontalGaps = document.getElementsByClassName(
+            "rain__horizontal-gap"
+            );
+
+            for (let i = 0; i < horizontalGaps.length; i++) {
+                const gap = horizontalGaps[i];
+
+                gap.style.right = `calc(${i} * 1.5vw * 2)`;
+
+                const number = randomNumber(0, 100);
+                gap.style.top = `${number}vh`;
+            }
+        });
+    </script>
   </body>
 </html>

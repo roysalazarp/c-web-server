@@ -12,12 +12,13 @@
 
 #define REQUEST_HEADERS_BUFFER_SIZE 1024
 #define MAX_CONNECTIONS 100
+#define PORT 8080
 
-volatile sig_atomic_t running = 1;
+volatile sig_atomic_t should_exit = 0;
 
 void sigint_handler(int signo) {
   if (signo == SIGINT) {
-    running = 0;
+    should_exit = 1;
   }
 }
 
@@ -73,7 +74,7 @@ int accept_client_connection (int server_socket_file_descriptor) {
     return client_socket_file_descriptor;
 }
 
-int extract_request_headers (char* request_headers, int server_socket_file_descriptor, int client_socket_file_descriptor) {
+int extract_request_headers (char *request_headers, int server_socket_file_descriptor, int client_socket_file_descriptor) {
     if (recv(client_socket_file_descriptor, request_headers, REQUEST_HEADERS_BUFFER_SIZE, 0) == -1) {
         log_error("Failed read N bytes into BUF from socket FD\n");
         return -1;
@@ -82,38 +83,45 @@ int extract_request_headers (char* request_headers, int server_socket_file_descr
     return 0;
 }
 
-int filetype_request (const char* path, const char* extension) {
-    size_t extension_length = strlen(extension);
-    size_t path_length = strlen(path);
+int filetype_request (char *path, char *extension) {
+    size_t extension_length = strlen(extension) + 1;
+    size_t path_length = strlen(path) + 1;
 
-    if (strncmp(path + path_length - extension_length, extension, extension_length) == 0) {
-        return 0;
-    } else {
+    if (extension_length > path_length) {
         return -1;
     }
 
-    return 0;
+    if (strncmp(path + path_length - extension_length, extension, extension_length) == 0) {
+        return 0;
+    }
+
+    return -1;
 }
 
 int main () {
     // used to gracefully exit program to check memory leaks with valgrind
     signal(SIGINT, sigint_handler);
 
-    uint16_t port = 8080;
-
-    int server_socket_file_descriptor = create_and_configure_server_socket(port);
+    int server_socket_file_descriptor = create_and_configure_server_socket(PORT);
     if (server_socket_file_descriptor == -1) {
         exit(EXIT_FAILURE);
     }
     
-    while (running) {
+    while (1) {
+        if (should_exit) {
+            close(server_socket_file_descriptor);
+            break;
+        }
+
+
         int client_socket_file_descriptor = accept_client_connection(server_socket_file_descriptor);
         if (client_socket_file_descriptor == -1) {
             close(server_socket_file_descriptor);
             exit(EXIT_FAILURE);
         }
 
-        char* request_headers = (char*)malloc(REQUEST_HEADERS_BUFFER_SIZE * sizeof(char));
+        char *request_headers;
+        request_headers = (char*)malloc((REQUEST_HEADERS_BUFFER_SIZE * (sizeof *request_headers)) + 1);
         if (request_headers == NULL) {
             log_error("Failed to allocate memory for request_headers\n");
             close(server_socket_file_descriptor);
@@ -121,7 +129,7 @@ int main () {
             exit(EXIT_FAILURE);
         }
         
-        request_headers[0] = '\0';
+        request_headers[0] = '\0'; // set memory to empty string
 
         if (extract_request_headers(request_headers, server_socket_file_descriptor, client_socket_file_descriptor) == -1) {
             close(server_socket_file_descriptor);
@@ -131,34 +139,22 @@ int main () {
             exit(EXIT_FAILURE);
         }
 
-        // char method[10];
-        // char url[256];
-    
-        // if (sscanf(request_headers, "%9s %255s\n", method, url) != 2) {
-        //     log_error("Failed to fill variables\n");
-        //     close(server_socket_file_descriptor);
-        //     close(client_socket_file_descriptor);
-        //     free(request_headers);
-        //     request_headers = NULL;
-        //     exit(EXIT_FAILURE);
-        // }
+        request_headers[REQUEST_HEADERS_BUFFER_SIZE] = '\0';
 
-        // Find the positions of spaces in the string
-        const char *space1 = strchr(request_headers, ' ');
-        const char *space2 = strchr(space1 + 1, ' ');
+        const char *first_space = strchr(request_headers, ' ');
+        const char *second_space = strchr(first_space + 1, ' ');
 
-        // Calculate the lengths of each part
-        size_t method_length = space1 - request_headers;
-        size_t url_length = space2 - (space1 + 1);
-        size_t protocol_length = strlen(space2 + 1);
+        size_t method_length = first_space - request_headers;
 
-        // Dynamically allocate memory for each part
-        char *method = malloc(method_length + 1);
-        char *url = malloc(url_length + 1);
-        char *protocol = malloc(protocol_length + 1);
+        char *method;
+        method = malloc(method_length * (sizeof *method) + 1);
+        
+        size_t url_length = second_space - (first_space + 1);
 
-        // Check if memory allocation was successful
-        if (method == NULL || url == NULL || protocol == NULL) {
+        char *url;
+        url = malloc(url_length * (sizeof *url) + 1);
+
+        if (method == NULL || url == NULL) {
             log_error("Failed to allocate memory for method, url or protocol\n");
             close(server_socket_file_descriptor);
             close(client_socket_file_descriptor);
@@ -166,20 +162,25 @@ int main () {
             request_headers = NULL;
             exit(EXIT_FAILURE);
         }
-        
-        url[url_length] = '\0';
-        method[method_length] = '\0';
-        protocol[protocol_length] = '\0';
 
         strncpy(method, request_headers, method_length);
-        strncpy(url, space1 + 1, url_length);
-        strncpy(protocol, space2 + 1, protocol_length);
+        method[method_length] = '\0';
+
+        strncpy(url, first_space + 1, url_length);
+        url[url_length] = '\0';
 
         if (filetype_request(url, ".css") == 0) {
-            if (serve_static(client_socket_file_descriptor, url) == -1) {
+            char headers[] = "HTTP/1.1 200 OK\r\nContent-Type: text/css\r\n\r\n";
+
+            if (serve_static(client_socket_file_descriptor, url, headers) == -1) {
                 close(server_socket_file_descriptor);
                 close(client_socket_file_descriptor);
                 free(request_headers);
+                request_headers = NULL;
+                free(url);
+                url = NULL;
+                free(method);
+                method = NULL;
                 exit(EXIT_FAILURE);
             }
         }
@@ -190,6 +191,11 @@ int main () {
                     close(server_socket_file_descriptor);
                     close(client_socket_file_descriptor);
                     free(request_headers);
+                    request_headers = NULL;
+                    free(url);
+                    url = NULL;
+                    free(method);
+                    method = NULL;
                     exit(EXIT_FAILURE);
                 }
             } // else if (strcmp(method, "POST") == 0) {
@@ -215,17 +221,19 @@ int main () {
                 close(client_socket_file_descriptor);
                 free(request_headers);
                 request_headers = NULL;
+                free(url);
+                url = NULL;
+                free(method);
+                method = NULL;
                 exit(EXIT_FAILURE);
             }
         }
-
-        if (!running) {
-            close(server_socket_file_descriptor);
-            close(client_socket_file_descriptor);
-            free(request_headers);
-            request_headers = NULL;
-            exit(EXIT_FAILURE);
-            break;
-        }
+        
+        free(request_headers);
+        request_headers = NULL;
+        free(url);
+        url = NULL;
+        free(method);
+        method = NULL;
     }
 }

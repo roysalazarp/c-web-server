@@ -4,13 +4,13 @@
 
 #include "utils/utils.h"
 
-char* find_needle_address (const char* haystack, const char* needle, int start_from, int direction) {
+char *find_needle_address (const char *haystack, const char *needle, int start_from, int direction) {
     if (haystack == NULL || needle == NULL) {
         return NULL;
     }
 
-    size_t haystack_length = strlen(haystack);
-    size_t needle_length = strlen(needle);
+    size_t haystack_length = strlen(haystack) + 1;
+    size_t needle_length = strlen(needle); // we only want characters
 
     if (needle_length > haystack_length) {
         log_error("Needle can't be greater than haystack");
@@ -41,8 +41,8 @@ char* find_needle_address (const char* haystack, const char* needle, int start_f
     return NULL;
 }
 
-
-int replace_string (char* haystack, const char* begin_address, const char* end_address, const char* value) {
+// null-terminates haystack after modifying
+int replace_string (char *haystack, const char *begin_address, const char *end_address, const char *value) {
     if (haystack == NULL || begin_address == NULL || end_address == NULL || value == NULL) {
         return -1;
     }
@@ -50,16 +50,13 @@ int replace_string (char* haystack, const char* begin_address, const char* end_a
     size_t begin_index = begin_address - haystack;
     size_t end_index = end_address - haystack;
 
-    // int space = end_address - begin_address;
-
     if (begin_index >= end_index || end_index > strlen(haystack)) {
         log_error("Something is wrong with the indexes");
         return -1;
     }
 
-    size_t value_length = strlen(value);
-    
-    size_t remaining_haystack_length = strlen(haystack + end_index) + 1; // strncpy will add null terminator
+    size_t value_length = strlen(value); // we only want characters
+    size_t remaining_haystack_length = strlen(haystack + end_index) + 1;
 
     // TODO: Check for errors
     // Shift the remaining part of the string to accommodate the new value
@@ -69,16 +66,17 @@ int replace_string (char* haystack, const char* begin_address, const char* end_a
     // Copy the new value into the specified range
     strncpy(haystack + begin_index, value, value_length);
 
+    haystack[begin_index + value_length + remaining_haystack_length] = '\0';
+
     return 0;
 }
 
 
 // Frees dest memory on failure
-int make_multiple_copies (char** dest, size_t num_copies, const char* source) {
-    
+int make_multiple_copies (char** dest, size_t num_copies, const char *source) {
     for (size_t i = 0; i < num_copies; ++i) {
         size_t source_lenght = strlen(source);
-        dest[i] = (char*)malloc((source_lenght + 1) * sizeof(char));
+        dest[i] = (char*)malloc(source_lenght * sizeof(char) + 1);
 
         if (dest[i] == NULL) {
             fprintf(stderr, "Failed to allocate memory for copy %zu\n", i);
@@ -96,6 +94,8 @@ int make_multiple_copies (char** dest, size_t num_copies, const char* source) {
 
         dest[i][0] = '\0';
         strcpy(dest[i], source);
+
+        dest[i][source_lenght] = '\0';
     }
 
     return 0;
@@ -111,20 +111,20 @@ void free_multiple_copies (char** copies, size_t num_copies) {
     copies = NULL;
 }
 
-int render_val (char* val_keyword, char* value, char* template) {
-    char* keyword_address = find_needle_address(template, val_keyword, 0, 1);
+int render_val (char *val_keyword, char *value, char *template) {
+    char *keyword_address = find_needle_address(template, val_keyword, 0, 1);
     if (keyword_address == NULL) {
         return -1;
     }
     
     int keyword_position_within_template = keyword_address - template;
     
-    char* start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
+    char *start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
     if (start_braces_address == NULL) {
         return -1;
     }
 
-    char* end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
+    char *end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
     if (end_braces_address == NULL) {
         return -1;
     }
@@ -136,19 +136,20 @@ int render_val (char* val_keyword, char* value, char* template) {
     return 0;
 }
 
-int render_for (char* list[], char* template, int list_length) {
-    char* location_keyword = list[0];
-    char* val_keyword = list[1];
+int render_for (char *list[], char *template, int list_length) {
+    char *location_keyword = list[0];
+    char *val_keyword = list[1];
     
-    char* keyword_address = find_needle_address(template, location_keyword, 0, 1);
+    char *keyword_address = find_needle_address(template, location_keyword, 0, 1);
     int keyword_position_within_template = keyword_address - template;
 
-    char* start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
-    char* end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
+    char *start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
+    char *end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
 
-    const char* prefix = "end ";
+    const char *prefix = "end ";
     size_t end_keyword_length = strlen(prefix) + strlen(location_keyword);
-    char* end_keyword = (char*)malloc((end_keyword_length + 1) * sizeof(char));
+    char *end_keyword;
+    end_keyword = (char*)malloc(end_keyword_length * (sizeof *end_keyword) + 1);
     if (end_keyword == NULL) {
         log_error("Failed to allocate memory for end_keyword\n");
         return -1;
@@ -163,18 +164,19 @@ int render_for (char* list[], char* template, int list_length) {
         return -1;
     }
 
-    char* end_keyword_address = find_needle_address(template, end_keyword, keyword_position_within_template, 1);
+    char *end_keyword_address = find_needle_address(template, end_keyword, keyword_position_within_template, 1);
     free(end_keyword);
     end_keyword = NULL;
 
     int end_keyword_position_within_template = end_keyword_address - template;
 
-    char* e_start_braces_address = find_needle_address(template, "{{", end_keyword_position_within_template, -1);
-    char* e_end_braces_address = find_needle_address(template, "}}", end_keyword_position_within_template, 1);
+    char *e_start_braces_address = find_needle_address(template, "{{", end_keyword_position_within_template, -1);
+    char *e_end_braces_address = find_needle_address(template, "}}", end_keyword_position_within_template, 1);
 
     size_t length = e_start_braces_address - (end_braces_address + 2);
 
-    char* for_template = (char*)malloc((length + 1) * sizeof(char));
+    char *for_template;
+    for_template = (char*)malloc(length * (sizeof *for_template) + 1);
     if (for_template == NULL) {
         log_error("Failed to allocate memory for for_template\n");
         return -1;
@@ -188,6 +190,8 @@ int render_for (char* list[], char* template, int list_length) {
         for_template = NULL;
         return -1;
     }
+
+    for_template[length] = '\0';
 
     size_t for_length = 0;
     
@@ -237,15 +241,13 @@ int render_for (char* list[], char* template, int list_length) {
         total_length += strlen(for_items[i]);
     }
 
-    // ERROR: Weird memory allocation here!
-    char* rendered_for = (char*)malloc((total_length + 1) * sizeof(char));
+    char *rendered_for;
+    rendered_for = (char*)malloc(total_length * (sizeof *rendered_for) + 1);
     if (rendered_for == NULL) {
         log_error("Failed to allocate memory for rendered_for\n");
         return -1;
     }
 
-    // Adding a null-terminator at position 0 sets the value of rendered_for to an empty string, 
-    // thus removing cleaning up previous values in the memory space given by malloc.
     rendered_for[0] = '\0'; 
 
     for (int i = 0; i < for_length; ++i) {

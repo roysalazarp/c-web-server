@@ -10,7 +10,7 @@ void log_error (const char *message) {
     fprintf(stderr, "Error code: %d\n", errno);
 }
 
-long int calculate_file_bytes_length (char* file_path) {
+long int calculate_file_bytes_length (char *file_path) {
     FILE* file = fopen(file_path, "r");
 
     if (file == NULL) {
@@ -37,7 +37,7 @@ long int calculate_file_bytes_length (char* file_path) {
     return file_size;
 }
 
-int read_file (char* file_content, char* file_path, long file_size) {
+int read_file (char *file_content, char *file_path, long file_size) {
     FILE* file = fopen(file_path, "r");
 
     if (file == NULL) {
@@ -59,12 +59,12 @@ int read_file (char* file_content, char* file_path, long file_size) {
         return -1;
     }
 
-    file_content[bytes_read] = '\0';
+    fclose(file);
 
     return 0;
 }
 
-int build_template_path (char* buffer, const char* path) {
+int build_template_path (char *buffer, const char *path) {
     char cwd[PATH_MAX];
 
     if (realpath(".", cwd) == NULL) {
@@ -72,11 +72,12 @@ int build_template_path (char* buffer, const char* path) {
         return -1;
     }
 
-    if (snprintf(buffer, PATH_MAX, "%s/%s", cwd, path) >= PATH_MAX) {
+    // snprintf automatically appends null-terminator
+    if (sprintf(buffer, "%s%s", cwd, path) < 0) {
         log_error("Formatted string truncated\n");
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -106,8 +107,8 @@ size_t calculate_combined_length (int num_strings, ...) {
     return sum;
 }
 
-char* retrieve_header (const char* request_headers, const char* key) {
-    char* key_start = strstr(request_headers, key);
+char *retrieve_header (const char *request_headers, const char *key) {
+    char *key_start = strstr(request_headers, key);
     if (key_start == NULL) return NULL;
 
     // Move the pointer to the start of the value and skip spaces and colon
@@ -115,12 +116,13 @@ char* retrieve_header (const char* request_headers, const char* key) {
         key_start++;
     }
 
-    char* value_end = strchr(key_start, '\n'); // Find the end of the value
+    char *value_end = strchr(key_start, '\n'); // Find the end of the value
     if (value_end == NULL) return NULL;
 
     size_t value_length = value_end - key_start;
     
-    char* value = (char*)malloc((value_length + 1) * sizeof(char));
+    char *value;
+    value = (char*)malloc(value_length * (sizeof *value) + 1);
     if (value == NULL) {
         log_error("Failed to allocate memory\n");
         return NULL;
