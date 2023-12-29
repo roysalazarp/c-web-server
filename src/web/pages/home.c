@@ -79,6 +79,7 @@ int home_get (int client_socket_file_descriptor, char *request_headers) {
     }
 
     // char *menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
+    // // render_for is returning -1
     // if (render_for(menu_list, template_content, 7) == -1) {
     //     free(template_content);
     //     template_content = NULL;
@@ -104,7 +105,6 @@ int home_get (int client_socket_file_descriptor, char *request_headers) {
     }
 
     http_response[0] = '\0';
-
 
     if (sprintf(http_response, "%s%s", headers, template_content) < 0) {
         log_error("Did't store the result in a specified buffer correctly\n");

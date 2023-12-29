@@ -113,7 +113,6 @@ int main () {
             break;
         }
 
-
         int client_socket_file_descriptor = accept_client_connection(server_socket_file_descriptor);
         if (client_socket_file_descriptor == -1) {
             close(server_socket_file_descriptor);

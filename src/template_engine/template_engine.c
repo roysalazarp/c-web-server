@@ -66,8 +66,6 @@ int replace_string (char *haystack, const char *begin_address, const char *end_a
     // Copy the new value into the specified range
     strncpy(haystack + begin_index, value, value_length);
 
-    haystack[begin_index + value_length + remaining_haystack_length] = '\0';
-
     return 0;
 }
 
