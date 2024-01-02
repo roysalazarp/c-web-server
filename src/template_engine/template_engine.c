@@ -42,29 +42,44 @@ char *find_needle_address (const char *haystack, const char *needle, int start_f
 }
 
 // null-terminates haystack after modifying
-int replace_string (char *haystack, const char *begin_address, const char *end_address, const char *value) {
-    if (haystack == NULL || begin_address == NULL || end_address == NULL || value == NULL) {
+int replace_string (char **haystack, const char *begin_address, const char *end_address, const char *value) {
+    if (*haystack == NULL || begin_address == NULL || end_address == NULL || value == NULL) {
         return -1;
     }
 
-    size_t begin_index = begin_address - haystack;
-    size_t end_index = end_address - haystack;
+    size_t begin_index = begin_address - *haystack;
+    size_t end_index = end_address - *haystack;
 
-    if (begin_index >= end_index || end_index > strlen(haystack)) {
+    if (begin_index >= end_index || end_index > strlen(*haystack)) {
         log_error("Something is wrong with the indexes");
         return -1;
     }
 
     size_t value_length = strlen(value); // we only want characters
-    size_t remaining_haystack_length = strlen(haystack + end_index) + 1;
+    size_t remaining_haystack_length = strlen(*haystack + end_index) + 1;
 
-    // TODO: Check for errors
-    // Shift the remaining part of the string to accommodate the new value
-    memmove(haystack + begin_index + value_length, haystack + end_index, remaining_haystack_length);
+    char *after;
+    after = malloc(remaining_haystack_length * (sizeof *after));
+    if (after == NULL) {
+        log_error("Failed to re-allocate memory for after\n");
+        return -1;
+    }
 
-    // TODO: Check for errors
-    // Copy the new value into the specified range
-    strncpy(haystack + begin_index, value, value_length);
+    strncpy(after, *haystack + end_index, remaining_haystack_length);
+    after[remaining_haystack_length - 1] = '\0';
+
+    *haystack = (char*)realloc(*haystack, (begin_index + value_length + remaining_haystack_length) * (sizeof **haystack));
+    if (*haystack == NULL) {
+        log_error("Failed to re-allocate memory for new_haystack\n");
+        return -1;
+    }
+
+    // TODO: Check for error in memmove and strncpy
+    memmove(*haystack + begin_index + value_length, after, remaining_haystack_length);
+    strncpy(*haystack + begin_index, value, value_length);
+
+    free(after);
+    after = NULL;
 
     return 0;
 }
@@ -109,20 +124,20 @@ void free_multiple_copies (char** copies, size_t num_copies) {
     copies = NULL;
 }
 
-int render_val (char *val_keyword, char *value, char *template) {
-    char *keyword_address = find_needle_address(template, val_keyword, 0, 1);
+int render_val (char *val_keyword, char *value, char **template) {
+    char *keyword_address = find_needle_address(*template, val_keyword, 0, 1);
     if (keyword_address == NULL) {
         return -1;
     }
     
-    int keyword_position_within_template = keyword_address - template;
+    int keyword_position_within_template = keyword_address - *template;
     
-    char *start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
+    char *start_braces_address = find_needle_address(*template, "{{", keyword_position_within_template, -1);
     if (start_braces_address == NULL) {
         return -1;
     }
 
-    char *end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
+    char *end_braces_address = find_needle_address(*template, "}}", keyword_position_within_template, 1);
     if (end_braces_address == NULL) {
         return -1;
     }
@@ -134,15 +149,15 @@ int render_val (char *val_keyword, char *value, char *template) {
     return 0;
 }
 
-int render_for (char *list[], char *template, int list_length) {
+int render_for (char *list[], char **template, int list_length) {
     char *location_keyword = list[0];
     char *val_keyword = list[1];
     
-    char *keyword_address = find_needle_address(template, location_keyword, 0, 1);
-    int keyword_position_within_template = keyword_address - template;
+    char *keyword_address = find_needle_address(*template, location_keyword, 0, 1);
+    int keyword_position_within_template = keyword_address - *template;
 
-    char *start_braces_address = find_needle_address(template, "{{", keyword_position_within_template, -1);
-    char *end_braces_address = find_needle_address(template, "}}", keyword_position_within_template, 1);
+    char *start_braces_address = find_needle_address(*template, "{{", keyword_position_within_template, -1);
+    char *end_braces_address = find_needle_address(*template, "}}", keyword_position_within_template, 1);
 
     const char *prefix = "end ";
     size_t end_keyword_length = strlen(prefix) + strlen(location_keyword);
@@ -162,14 +177,14 @@ int render_for (char *list[], char *template, int list_length) {
         return -1;
     }
 
-    char *end_keyword_address = find_needle_address(template, end_keyword, keyword_position_within_template, 1);
+    char *end_keyword_address = find_needle_address(*template, end_keyword, keyword_position_within_template, 1);
     free(end_keyword);
     end_keyword = NULL;
 
-    int end_keyword_position_within_template = end_keyword_address - template;
+    int end_keyword_position_within_template = end_keyword_address - *template;
 
-    char *e_start_braces_address = find_needle_address(template, "{{", end_keyword_position_within_template, -1);
-    char *e_end_braces_address = find_needle_address(template, "}}", end_keyword_position_within_template, 1);
+    char *e_start_braces_address = find_needle_address(*template, "{{", end_keyword_position_within_template, -1);
+    char *e_end_braces_address = find_needle_address(*template, "}}", end_keyword_position_within_template, 1);
 
     size_t length = e_start_braces_address - (end_braces_address + 2);
 
@@ -222,7 +237,7 @@ int render_for (char *list[], char *template, int list_length) {
     for (int i = 0; i < for_length; ++i) {
         int ri = i + 2;
 
-        if (render_val(val_keyword, list[ri], for_items[i]) == -1) {
+        if (render_val(val_keyword, list[ri], &for_items[i]) == -1) {
             // Clean up previously allocated memory
             for (size_t j = 0; j < i; ++j) {
                 free(for_items[j]);

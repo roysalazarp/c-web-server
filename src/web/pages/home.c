@@ -58,33 +58,32 @@ int home_get (int client_socket_file_descriptor, char *request_headers) {
     template_path = NULL;
 
     char *country[3] = { "v0", "Finland", NULL };
-    if (render_val(country[0], country[1], template_content) == -1) {
+    if (render_val(country[0], country[1], &template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
     char *phone_number[3] = { "v1", "441317957", NULL };
-    if (render_val(phone_number[0], phone_number[1], template_content) == -1) {
+    if (render_val(phone_number[0], phone_number[1], &template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
     
     char *phone_prefix[3] = { "v2", "+358", NULL };
-    if (render_val(phone_prefix[0], phone_prefix[1], template_content) == -1) {
+    if (render_val(phone_prefix[0], phone_prefix[1], &template_content) == -1) {
         free(template_content);
         template_content = NULL;
         return -1;
     }
 
-    // char *menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
-    // // render_for is returning -1
-    // if (render_for(menu_list, template_content, 7) == -1) {
-    //     free(template_content);
-    //     template_content = NULL;
-    //     return -1;
-    // }
+    char *menu_list[7] = { "for0", "for0->v0", "home", "about", "contact", "careers", NULL };
+    if (render_for(menu_list, &template_content, 7) == -1) {
+        free(template_content);
+        template_content = NULL;
+        return -1;
+    }
 
     char headers[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
     
