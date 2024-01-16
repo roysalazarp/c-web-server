@@ -1,2 +1,2 @@
-int render_val (char *val_keyword, char *value, char **template);
-int render_for (char *list[], char **template, int list_length);
+int te_single_substring_swap(char *substring_to_remove, char *substring_to_add, char **string);
+int te_multiple_substring_swap(char *block_id, char *substring_to_remove, char **substrings_to_add, char **string);

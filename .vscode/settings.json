@@ -1,12 +1,16 @@
 {
     "files.associations": {
-        "handlers.h": "c",
+        "request_handlers.h": "c",
         "utils.h": "c",
         "string.h": "c",
         "stdio.h": "c",
         "type_traits": "c",
         "stdarg.h": "c",
-        "template_engine.h": "c"
+        "template_engine.h": "c",
+        "signal.h": "c",
+        "stdint.h": "c",
+        "types.h": "c",
+        "globals.h": "c"
     },
     "editor.tabSize": 4,
 }

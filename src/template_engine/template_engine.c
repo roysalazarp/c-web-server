@@ -1,82 +1,87 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
-#include "utils/utils.h"
+void te_log_error(const char *message) {
+    perror(message);
+    fprintf(stderr, "Error code: %d\n", errno);
+}
 
-char *find_needle_address (const char *haystack, const char *needle, int start_from, int direction) {
-    if (haystack == NULL || needle == NULL) {
+char *te_substring_address_find(const char *substring, const char *string, unsigned int start_from_position, int direction) {
+    if (string == NULL || substring == NULL) {
         return NULL;
     }
 
-    size_t haystack_length = strlen(haystack) + 1;
-    size_t needle_length = strlen(needle); // we only want characters
+    size_t string_length = strlen(string) + 1;
+    size_t substring_length = strlen(substring); /* we only want characters */
 
-    if (needle_length > haystack_length) {
-        log_error("Needle can't be greater than haystack");
+    if (substring_length > string_length) {
+        te_log_error("substring can't be greater than string");
         return NULL;
     }
 
-    int end = 0;
+    unsigned int end = 0;
     int step = 0;
 
     if (direction > 0) {
-        // Forward search
-        end = haystack_length;
+        /* Forward search */
+        end = string_length;
         step = 1;
     } else {
-        // Backward search
+        /* Backward search */
         end = 0;
         step = -1;
     }
 
-    for (int i = start_from; i != end; i += step) {
-        if (strncmp(haystack + i, needle, needle_length) == 0) {
-            // Found the needle, return its address
-            return (char*)(haystack + i);
+    unsigned int i;
+    for (i = start_from_position; i != end; i += step) {
+        if (strncmp(string + i, substring, substring_length) == 0) {
+            /* Found the substring, return its address */
+            return (char*)(string + i);
         }
     }
 
-    log_error("Couldn't find the needle");
+    te_log_error("Couldn't find the substring");
     return NULL;
 }
 
-// null-terminates haystack after modifying
-int replace_string (char **haystack, const char *begin_address, const char *end_address, const char *value) {
-    if (*haystack == NULL || begin_address == NULL || end_address == NULL || value == NULL) {
+/* null-terminates string after modifying */
+int te_substring_copy_into_string_at_memory_space(const char *substring, char **string, const char *begin_address, const char *end_address) {
+    if (*string == NULL || begin_address == NULL || end_address == NULL || substring == NULL) {
         return -1;
     }
 
-    size_t begin_index = begin_address - *haystack;
-    size_t end_index = end_address - *haystack;
+    size_t begin_index = begin_address - *string;
+    size_t end_index = end_address - *string;
 
-    if (begin_index >= end_index || end_index > strlen(*haystack)) {
-        log_error("Something is wrong with the indexes");
+    if (begin_index >= end_index || end_index > strlen(*string)) {
+        te_log_error("Something is wrong with the indexes");
         return -1;
     }
 
-    size_t value_length = strlen(value); // we only want characters
-    size_t remaining_haystack_length = strlen(*haystack + end_index) + 1;
+    size_t value_length = strlen(substring); /* we only want characters */
+    size_t remaining_string_length = strlen(*string + end_index) + 1;
 
     char *after;
-    after = malloc(remaining_haystack_length * (sizeof *after));
+    after = malloc(remaining_string_length * (sizeof *after));
     if (after == NULL) {
-        log_error("Failed to re-allocate memory for after\n");
+        te_log_error("Failed to re-allocate memory for after\n");
         return -1;
     }
 
-    strncpy(after, *haystack + end_index, remaining_haystack_length);
-    after[remaining_haystack_length - 1] = '\0';
+    strncpy(after, *string + end_index, remaining_string_length);
+    after[remaining_string_length - 1] = '\0';
 
-    *haystack = (char*)realloc(*haystack, (begin_index + value_length + remaining_haystack_length) * (sizeof **haystack));
-    if (*haystack == NULL) {
-        log_error("Failed to re-allocate memory for new_haystack\n");
+    *string = (char*)realloc(*string, (begin_index + value_length + remaining_string_length) * (sizeof **string));
+    if (*string == NULL) {
+        te_log_error("Failed to re-allocate memory for new_string\n");
         return -1;
     }
 
-    // TODO: Check for error in memmove and strncpy
-    memmove(*haystack + begin_index + value_length, after, remaining_haystack_length);
-    strncpy(*haystack + begin_index, value, value_length);
+    /* TODO: Check for error in memmove and strncpy */
+    memmove(*string + begin_index + value_length, after, remaining_string_length);
+    strncpy(*string + begin_index, substring, value_length);
 
     free(after);
     after = NULL;
@@ -85,120 +90,120 @@ int replace_string (char **haystack, const char *begin_address, const char *end_
 }
 
 
-// Frees dest memory on failure
-int make_multiple_copies (char** dest, size_t num_copies, const char *source) {
-    for (size_t i = 0; i < num_copies; ++i) {
-        size_t source_lenght = strlen(source);
-        dest[i] = (char*)malloc(source_lenght * sizeof(char) + 1);
+/* Frees dest memory on failure */
+int te_string_copy_into_all_buffers(const char *string, char** buffer_array, size_t buffer_array_length) {
+    size_t i;
+    for (i = 0; i < buffer_array_length; ++i) {
+        size_t source_lenght = strlen(string);
+        buffer_array[i] = (char*)malloc(source_lenght * sizeof(char) + 1);
 
-        if (dest[i] == NULL) {
-            fprintf(stderr, "Failed to allocate memory for copy %zu\n", i);
+        if (buffer_array[i] == NULL) {
+            fprintf(stderr, "Failed to allocate memory for copy %lu\n", (unsigned long)i);
 
-            // Clean up previously allocated memory
-            for (size_t j = 0; j < i; ++j) {
-                free(dest[j]);
-                dest[j] = NULL;
+            /* Clean up previously allocated memory */
+            size_t j;
+            for (j = 0; j < i; ++j) {
+                free(buffer_array[j]);
+                buffer_array[j] = NULL;
             }
 
-            free(dest);
-            dest = NULL;
+            free(buffer_array);
+            buffer_array = NULL;
             return -1;
         }
 
-        dest[i][0] = '\0';
-        strcpy(dest[i], source);
+        buffer_array[i][0] = '\0';
+        strcpy(buffer_array[i], string);
 
-        dest[i][source_lenght] = '\0';
+        buffer_array[i][source_lenght] = '\0';
     }
 
     return 0;
 }
 
-void free_multiple_copies (char** copies, size_t num_copies) {
-    for (size_t i = 0; i < num_copies; ++i) {
-        free(copies[i]);
-        copies[i] = NULL;
+void te_buffer_array_free(char** buffer_array, size_t buffer_array_length) {
+    size_t i;
+    for (i = 0; i < buffer_array_length; ++i) {
+        free(buffer_array[i]);
+        buffer_array[i] = NULL;
     }
 
-    free(copies);
-    copies = NULL;
+    free(buffer_array);
+    buffer_array = NULL;
 }
 
-int render_val (char *val_keyword, char *value, char **template) {
-    char *keyword_address = find_needle_address(*template, val_keyword, 0, 1);
-    if (keyword_address == NULL) {
+int te_single_substring_swap(char *substring_to_remove, char *substring_to_add, char **string) {
+    char *substring_to_remove_address = te_substring_address_find(substring_to_remove, *string, 0, 1);
+    if (substring_to_remove_address == NULL) {
         return -1;
     }
     
-    int keyword_position_within_template = keyword_address - *template;
+    int substring_to_remove_position_within_string = substring_to_remove_address - *string;
     
-    char *start_braces_address = find_needle_address(*template, "{{", keyword_position_within_template, -1);
-    if (start_braces_address == NULL) {
+    char *opening_braces_address = te_substring_address_find("{{", *string, substring_to_remove_position_within_string, -1);
+    if (opening_braces_address == NULL) {
         return -1;
     }
 
-    char *end_braces_address = find_needle_address(*template, "}}", keyword_position_within_template, 1);
-    if (end_braces_address == NULL) {
+    char *closing_braces_address = te_substring_address_find("}}", *string, substring_to_remove_position_within_string, 1);
+    if (closing_braces_address == NULL) {
         return -1;
     }
     
-    if (replace_string(template, start_braces_address, end_braces_address + 2, value) == -1) {
+    if (te_substring_copy_into_string_at_memory_space(substring_to_add, string, opening_braces_address, closing_braces_address + 2) == -1) {
         return -1;
     }
 
     return 0;
 }
 
-int render_for (char *list[], char **template, int list_length) {
-    char *location_keyword = list[0];
-    char *val_keyword = list[1];
-    
-    char *keyword_address = find_needle_address(*template, location_keyword, 0, 1);
-    int keyword_position_within_template = keyword_address - *template;
+int te_multiple_substring_swap(char *block_id, char *substring_to_remove, char **substrings_to_add, char **string) {    
+    char *keyword_address = te_substring_address_find(block_id, *string, 0, 1);
+    unsigned int keyword_position_within_template = keyword_address - *string;
 
-    char *start_braces_address = find_needle_address(*template, "{{", keyword_position_within_template, -1);
-    char *end_braces_address = find_needle_address(*template, "}}", keyword_position_within_template, 1);
+    char *start_braces_address = te_substring_address_find("{{", *string, keyword_position_within_template, -1);
+    char *end_braces_address = te_substring_address_find("}}", *string, keyword_position_within_template, 1);
 
     const char *prefix = "end ";
-    size_t end_keyword_length = strlen(prefix) + strlen(location_keyword);
+    size_t end_keyword_length = strlen(prefix) + strlen(block_id);
     char *end_keyword;
     end_keyword = (char*)malloc(end_keyword_length * (sizeof *end_keyword) + 1);
     if (end_keyword == NULL) {
-        log_error("Failed to allocate memory for end_keyword\n");
+        te_log_error("Failed to allocate memory for end_keyword\n");
         return -1;
     }
 
     end_keyword[0] = '\0';
 
-    if (sprintf(end_keyword, "%s%s", prefix, location_keyword) < 0) {
-        log_error("Failed to format string\n");
+    if (sprintf(end_keyword, "%s%s", prefix, block_id) < 0) {
+        te_log_error("Failed to format string\n");
         free(end_keyword);
         end_keyword = NULL;
         return -1;
     }
 
-    char *end_keyword_address = find_needle_address(*template, end_keyword, keyword_position_within_template, 1);
+    char *end_keyword_address = te_substring_address_find(end_keyword, *string, keyword_position_within_template, 1);
     free(end_keyword);
     end_keyword = NULL;
 
-    int end_keyword_position_within_template = end_keyword_address - *template;
+    unsigned int end_keyword_position_within_template = end_keyword_address - *string;
 
-    char *e_start_braces_address = find_needle_address(*template, "{{", end_keyword_position_within_template, -1);
-    char *e_end_braces_address = find_needle_address(*template, "}}", end_keyword_position_within_template, 1);
+    char *e_start_braces_address = te_substring_address_find("{{", *string, end_keyword_position_within_template, -1);
+    char *e_end_braces_address = te_substring_address_find("}}", *string, end_keyword_position_within_template, 1);
 
     size_t length = e_start_braces_address - (end_braces_address + 2);
 
     char *for_template;
     for_template = (char*)malloc(length * (sizeof *for_template) + 1);
     if (for_template == NULL) {
-        log_error("Failed to allocate memory for for_template\n");
+        te_log_error("Failed to allocate memory for for_template\n");
         return -1;
     }
 
     for_template[0] = '\0';
 
     if (strncpy(for_template, end_braces_address + 2, length) == NULL) {
-        log_error("Failed copy string\n");
+        te_log_error("Failed copy string\n");
         free(for_template);
         for_template = NULL;
         return -1;
@@ -208,24 +213,25 @@ int render_for (char *list[], char **template, int list_length) {
 
     size_t for_length = 0;
     
-    for (int i = 2; list[i] != NULL; i++) {
+    size_t i;
+    for (i = 0; substrings_to_add[i] != NULL; i++) {
         for_length++;
     }
 
     char** for_items = (char**)malloc(for_length * sizeof(char*));
     if (for_items == NULL) {
-        log_error("Failed to allocate memory for for_items\n");
+        te_log_error("Failed to allocate memory for for_items\n");
         free(for_template);
         for_template = NULL;
         return -1;
     }
 
-    for (size_t i = 0; i < for_length; i++) {
+    for (i = 0; i < for_length; i++) {
         for_items[i] = NULL;
     }
     
-    if (make_multiple_copies(for_items, for_length, for_template) == -1) {
-        log_error("Failed to make for_items\n");
+    if (te_string_copy_into_all_buffers(for_template, for_items, for_length) == -1) {
+        te_log_error("Failed to make for_items\n");
         free(for_template);
         for_template = NULL;
         return -1;
@@ -234,12 +240,11 @@ int render_for (char *list[], char **template, int list_length) {
     free(for_template);
     for_template = NULL;
 
-    for (int i = 0; i < for_length; ++i) {
-        int ri = i + 2;
-
-        if (render_val(val_keyword, list[ri], &for_items[i]) == -1) {
-            // Clean up previously allocated memory
-            for (size_t j = 0; j < i; ++j) {
+    for (i = 0; i < for_length; ++i) {
+        if (te_single_substring_swap(substring_to_remove, substrings_to_add[i], &for_items[i]) == -1) {
+            /* Clean up previously allocated memory */
+            size_t j;
+            for (j = 0; j < i; ++j) {
                 free(for_items[j]);
                 for_items[j] = NULL;
             }
@@ -250,28 +255,28 @@ int render_for (char *list[], char **template, int list_length) {
     }
 
     size_t total_length = 0;
-    for (int i = 0; i < for_length; ++i) {
+    for (i = 0; i < for_length; ++i) {
         total_length += strlen(for_items[i]);
     }
 
     char *rendered_for;
     rendered_for = (char*)malloc(total_length * (sizeof *rendered_for) + 1);
     if (rendered_for == NULL) {
-        log_error("Failed to allocate memory for rendered_for\n");
+        te_log_error("Failed to allocate memory for rendered_for\n");
         return -1;
     }
 
     rendered_for[0] = '\0'; 
 
-    for (int i = 0; i < for_length; ++i) {
-        // TODO: Check for strcat errors
-        // strcat will do its work before the null-terminator
+    for (i = 0; i < for_length; ++i) {
+        /* TODO: Check for strcat errors */
+        /* strcat will do its work before the null-terminator */
         strcat(rendered_for, for_items[i]);
     }
 
-    free_multiple_copies(for_items, for_length);
+    te_buffer_array_free(for_items, for_length);
 
-    if (replace_string(template, start_braces_address, e_end_braces_address + 2, rendered_for) == -1) {
+    if (te_substring_copy_into_string_at_memory_space(rendered_for, string, start_braces_address, e_end_braces_address + 2) == -1) {
         free(rendered_for);
         rendered_for = NULL;
         return -1;

@@ -9,12 +9,24 @@
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;800&display=swap"
           rel="stylesheet"
         />
-        <link rel="stylesheet" href="src/web/pages/home.css">
-        <link rel="stylesheet" href="src/web/pages/global.css">
+        <link rel="stylesheet" href="src/web/pages/home/home.css">
+        <link rel="stylesheet" href="src/web/static/global.css">
         <title>Document</title>
     </head>
     <body>
-        <div class="rain">
+        <div>
+            country: {{ v0 country }}
+        </div>
+        <div>
+            phone number: {{ v2 phone_prefix }} {{ v1 phone_number }}
+        </div>
+        <ul>
+            {{ for0 menu_list }}
+            <li>{{ for0->v0 menu_item }}</li>
+            {{ end for0 }}
+        </ul>
+        <script defer src="src/web/pages/home/home.js"></script>
+        <!-- <div class="rain">
             <div class="terminal">
                 <div class="terminal__text">
                     <section>
@@ -76,67 +88,35 @@
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 2));
-                  margin-top: calc(10vh + (5vh * 2));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 2)); margin-top: calc(10vh + (5vh * 2));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 3));
-                  margin-top: calc(10vh + (5vh * 3));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 3)); margin-top: calc(10vh + (5vh * 3));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 4));
-                  margin-top: calc(10vh + (5vh * 4));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 4)); margin-top: calc(10vh + (5vh * 4));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 5));
-                  margin-top: calc(10vh + (5vh * 5));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 5)); margin-top: calc(10vh + (5vh * 5));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 6));
-                  margin-top: calc(10vh + (5vh * 6));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 6)); margin-top: calc(10vh + (5vh * 6));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 7));
-                  margin-top: calc(10vh + (5vh * 7));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 7)); margin-top: calc(10vh + (5vh * 7));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 8));
-                  margin-top: calc(10vh + (5vh * 8));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 8)); margin-top: calc(10vh + (5vh * 8));"
             ></div>
             <div
                 class="terminal__recursive"
-                style="
-                  opacity: 30%;
-                  margin-left: calc(10vw + (2.5vw * 9));
-                  margin-top: calc(10vh + (5vh * 9));
-                "
+                style="opacity: 30%; margin-left: calc(10vw + (2.5vw * 9)); margin-top: calc(10vh + (5vh * 9));"
             ></div>
             <div class="crack">
                 <div class="crack__line-01"></div>
@@ -193,6 +173,6 @@
                     gap.style.top = `${number}vh`;
                 }
             });
-        </script>
+        </script> -->
     </body>
 </html>
